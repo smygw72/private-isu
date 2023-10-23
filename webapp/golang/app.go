@@ -862,8 +862,8 @@ func main() {
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 		http.FileServer(http.Dir("../public")).ServeHTTP(w, r)
 	})
-	r.Get("api/pprof/start", getProfileStart)
-	r.Get("api/pprof/stop", getProfileStop)
+	r.Get("/api/pprof/start", getProfileStart)
+	r.Get("/api/pprof/stop", getProfileStop)
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
