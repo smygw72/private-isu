@@ -22,11 +22,13 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/profile"
 )
 
 var (
-	db    *sqlx.DB
-	store *gsm.MemcacheStore
+	db       *sqlx.DB
+	store    *gsm.MemcacheStore
+	profiler interface{ Stop() }
 )
 
 const (
@@ -791,6 +793,17 @@ func postAdminBanned(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/admin/banned", http.StatusFound)
 }
 
+func getProfileStart(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Query().Get("path")
+	profiler = profile.Start(profile.ProfilePath(path))
+	w.WriteHeader(http.StatusOK)
+}
+
+func getProfileStop(w http.ResponseWriter, r *http.Request) {
+	profiler.Stop()
+	w.WriteHeader(http.StatusOK)
+}
+
 func main() {
 	host := os.Getenv("ISUCONP_DB_HOST")
 	if host == "" {
@@ -849,6 +862,8 @@ func main() {
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 		http.FileServer(http.Dir("../public")).ServeHTTP(w, r)
 	})
+	r.Get("api/pprof/start", getProfileStart)
+	r.Get("api/pprof/stop", getProfileStop)
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
