@@ -89,6 +89,7 @@ func dbInitialize() {
 		"UPDATE users SET del_flg = 0",
 		"UPDATE users SET del_flg = 1 WHERE id % 50 = 0",
 		"ALTER TABLE `comments` ADD INDEX `post_id_index` (`post_id`, `created_at` DESC);",
+		"ALTER TABLE `coments` ADD INDEX `user_id_index` (`user_id`);",
 	}
 
 	for _, sql := range sqls {
