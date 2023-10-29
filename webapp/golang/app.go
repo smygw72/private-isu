@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	crand "crypto/rand"
+	"encoding/gob"
 	"fmt"
 	"html/template"
 	"io"
@@ -28,6 +30,7 @@ import (
 var (
 	db       *sqlx.DB
 	store    *gsm.MemcacheStore
+	mc       *memcache.Client
 	profiler interface{ Stop() }
 )
 
@@ -91,6 +94,41 @@ func dbInitialize() {
 	for _, sql := range sqls {
 		db.Exec(sql)
 	}
+}
+
+// 構造体をMemcacheにセットする関数
+func setStructToMemcache(mc *memcache.Client, key string, value interface{}) error {
+	// 構造体をバイナリデータにシリアライズ
+	var buffer bytes.Buffer
+	encoder := gob.NewEncoder(&buffer)
+	err := encoder.Encode(value)
+	if err != nil {
+		return err
+	}
+
+	// Memcacheにセット
+	item := &memcache.Item{
+		Key:        key,
+		Value:      buffer.Bytes(),
+		Expiration: 5,
+	}
+	return mc.Set(item)
+}
+
+// Memcacheから構造体を取得する関数
+func getStructFromMemcache(mc *memcache.Client, key string, v interface{}) error {
+	item, err := mc.Get(key)
+	if err != nil {
+		return err
+	}
+
+	// バイナリデータを指定された構造体にデシリアライズ
+	buffer := bytes.NewBuffer(item.Value)
+	decoder := gob.NewDecoder(buffer)
+	if err := decoder.Decode(v); err != nil {
+		return err
+	}
+	return nil
 }
 
 func tryLogin(accountName, password string) *User {
@@ -387,18 +425,22 @@ func getLogout(w http.ResponseWriter, r *http.Request) {
 func getIndex(w http.ResponseWriter, r *http.Request) {
 	me := getSessionUser(r)
 
-	results := []Post{}
-
-	err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
+	key := "index"
+	var posts []Post
+	err := getStructFromMemcache(mc, key, &posts)
 	if err != nil {
-		log.Print(err)
-		return
-	}
-
-	posts, err := makePosts(results, getCSRFToken(r), false)
-	if err != nil {
-		log.Print(err)
-		return
+		results := []Post{}
+		err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
+		if err != nil {
+			log.Print(err)
+			return
+		}
+		posts, err = makePosts(results, getCSRFToken(r), false)
+		if err != nil {
+			log.Print(err)
+			return
+		}
+		setStructToMemcache(mc, key, posts)
 	}
 
 	fmap := template.FuncMap{
