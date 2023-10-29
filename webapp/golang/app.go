@@ -79,7 +79,6 @@ func init() {
 	mc = memcache.New(memdAddr)
 	store = gsm.NewMemcacheStore(mc, "iscogram_", []byte("sendagaya"))
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
-	dumpImageFiles()
 }
 
 func dbInitialize() {
@@ -96,6 +95,7 @@ func dbInitialize() {
 	for _, sql := range sqls {
 		db.Exec(sql)
 	}
+	dumpImageFiles()
 }
 
 // 構造体をMemcacheにセットする関数
