@@ -1,0 +1,83 @@
+
+# 1.5s user time, 0 system time, 29.88M rss, 35.62M vsz
+# Current date: Sun Oct 29 10:58:07 2023
+# Hostname: ip-172-31-20-235
+# Files: /var/log/mysql/mysql-slow.log
+# Overall: 27.10k total, 25 unique, 297.81 QPS, 21.22x concurrency _______
+# Time range: 2023-10-29T01:56:32 to 2023-10-29T01:58:03
+# Attribute          total     min     max     avg     95%  stddev  median
+# ============     ======= ======= ======= ======= ======= ======= =======
+# Exec time          1931s     1us      2s    71ms   477ms   256ms    57us
+# Lock time           35ms       0     4ms     1us     1us    51us       0
+# Rows sent        607.46k       0   9.77k   22.95    2.90  452.71       0
+# Rows examine     285.05M       0  97.67k  10.77k  97.04k  30.33k       0
+# Query size         1.09M      17 119.03k   42.28   80.10  733.58   31.70
+
+# Profile
+# Rank Query ID                      Response time   Calls R/Call V/M   It
+# ==== ============================= =============== ===== ====== ===== ==
+#    1 0x624863D30DAC59FA16849282... 1455.3018 75.4%  1467 0.9920  0.25 SELECT comments
+#    2 0x422390B42D4DD86C7539A5F4...  432.1571 22.4%  1474 0.2932  0.07 SELECT comments
+# MISC 0xMISC                          43.8868  2.3% 24160 0.0018   0.0 <23 ITEMS>
+
+# Query 1: 16.12 QPS, 15.99x concurrency, ID 0x624863D30DAC59FA16849282195BE09F at byte 4580248
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.25
+# Time range: 2023-10-29T01:56:32 to 2023-10-29T01:58:03
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          5    1467
+# Exec time     75   1455s    40ms      2s   992ms      2s   494ms   945ms
+# Lock time     18     6ms       0     4ms     4us     2us    94us     1us
+# Rows sent      0   4.12k       0       3    2.88    2.90    0.57    2.90
+# Rows examine  49 139.91M  97.66k  97.66k  97.66k  97.04k       0  97.04k
+# Query size    10 117.58k      81      83   82.08   80.10       0   80.10
+# String:
+# Databases    isuconp
+# Hosts        localhost
+# Users        isuconp
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms  ##############
+# 100ms  #######################################################
+#    1s  ################################################################
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `isuconp` LIKE 'comments'\G
+#    SHOW CREATE TABLE `isuconp`.`comments`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT * FROM `comments` WHERE `post_id` = 9996 ORDER BY `created_at` DESC LIMIT 3\G
+
+# Query 2: 16.20 QPS, 4.75x concurrency, ID 0x422390B42D4DD86C7539A5F45EB76A80 at byte 4477817
+# This item is included in the report because it matches --limit.
+# Scores: V/M = 0.07
+# Time range: 2023-10-29T01:56:32 to 2023-10-29T01:58:03
+# Attribute    pct   total     min     max     avg     95%  stddev  median
+# ============ === ======= ======= ======= ======= ======= ======= =======
+# Count          5    1474
+# Exec time     22    432s    12ms   655ms   293ms   526ms   147ms   279ms
+# Lock time     25     9ms       0     4ms     5us     1us   128us     1us
+# Rows sent      0   1.44k       1       1       1       1       0       1
+# Rows examine  49 140.57M  97.66k  97.66k  97.66k  97.04k       0  97.04k
+# Query size     8  93.67k      64      66   65.08   65.89    0.86   62.76
+# String:
+# Databases    isuconp
+# Hosts        localhost
+# Users        isuconp
+# Query_time distribution
+#   1us
+#  10us
+# 100us
+#   1ms
+#  10ms  ########
+# 100ms  ################################################################
+#    1s
+#  10s+
+# Tables
+#    SHOW TABLE STATUS FROM `isuconp` LIKE 'comments'\G
+#    SHOW CREATE TABLE `isuconp`.`comments`\G
+# EXPLAIN /*!50100 PARTITIONS*/
+SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = 9996\G
