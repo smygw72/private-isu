@@ -79,6 +79,7 @@ func init() {
 	mc = memcache.New(memdAddr)
 	store = gsm.NewMemcacheStore(mc, "iscogram_", []byte("sendagaya"))
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	dumpImageFiles()
 }
 
 func dbInitialize() {
@@ -846,6 +847,37 @@ func getProfileStart(w http.ResponseWriter, r *http.Request) {
 func getProfileStop(w http.ResponseWriter, r *http.Request) {
 	profiler.Stop()
 	w.WriteHeader(http.StatusOK)
+}
+
+func dumpImageFiles() {
+
+	query := "SELECT id, mime, imgdata FROM `posts`"
+	posts := []Post{}
+
+	err := db.Get(&posts, query)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	for _, p := range posts {
+		var ext string
+		if p.Mime == "image/jpeg" {
+			ext = ".jpg"
+		} else if p.Mime == "image/png" {
+			ext = ".png"
+		} else if p.Mime == "image/gif" {
+			ext = ".gif"
+		}
+		path := "./public/image/" + strconv.Itoa(p.ID) + ext
+
+		// 画像データをファイルに書き込む
+		err = os.WriteFile(path, p.Imgdata, 0644)
+		if err != nil {
+			log.Print(err)
+			return
+		}
+	}
 }
 
 func main() {
