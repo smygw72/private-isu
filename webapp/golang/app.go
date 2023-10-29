@@ -608,24 +608,6 @@ func getPostsID(w http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 		return
 	}
-	for _, result := range results {
-		pid := result.ID
-		mime := result.Mime
-		var ext string
-		if mime == "image/jpeg" {
-			ext = "jpg"
-		} else if mime == "image/png" {
-			ext = "png"
-		} else if mime == "image/gif" {
-			ext = "gif"
-		}
-		path := fmt.Sprintf("../public/image/%d.%s", pid, ext)
-		result.Imgdata, err = os.ReadFile(path)
-		if err != nil {
-			log.Print(err)
-			return
-		}
-	}
 
 	posts, err := makePosts(results, getCSRFToken(r), true)
 	if err != nil {
