@@ -869,7 +869,7 @@ func dumpImageFiles() {
 		} else if p.Mime == "image/gif" {
 			ext = ".gif"
 		}
-		path := "./public/image/" + strconv.Itoa(p.ID) + ext
+		path := "../public/image/" + strconv.Itoa(p.ID) + ext
 
 		// 画像データをファイルに書き込む
 		err = os.WriteFile(path, p.Imgdata, 0644)
