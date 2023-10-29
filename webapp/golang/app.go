@@ -95,7 +95,6 @@ func dbInitialize() {
 	for _, sql := range sqls {
 		db.Exec(sql)
 	}
-	dumpImageFiles()
 }
 
 // 構造体をMemcacheにセットする関数
@@ -714,6 +713,8 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	dumpImageFiles(pid, mime, filedata)
+
 	http.Redirect(w, r, "/posts/"+strconv.FormatInt(pid, 10), http.StatusFound)
 }
 
@@ -849,34 +850,21 @@ func getProfileStop(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func dumpImageFiles() {
+func dumpImageFiles(pid int64, mime string, filedata []byte) {
+	var ext string
+	if mime == "image/jpeg" {
+		ext = "jpg"
+	} else if mime == "image/png" {
+		ext = "png"
+	} else if mime == "image/gif" {
+		ext = "gif"
+	}
+	path := fmt.Sprintf("../public/image/%d.%s", pid, ext)
 
-	query := "SELECT id, mime, imgdata FROM `posts`"
-	posts := []Post{}
-
-	err := db.Get(&posts, query)
+	err := os.WriteFile(path, filedata, 0666)
 	if err != nil {
 		log.Print(err)
 		return
-	}
-
-	for _, p := range posts {
-		var ext string
-		if p.Mime == "image/jpeg" {
-			ext = "jpg"
-		} else if p.Mime == "image/png" {
-			ext = "png"
-		} else if p.Mime == "image/gif" {
-			ext = "gif"
-		}
-		path := fmt.Sprintf("../public/image/%d.%s", p.ID, ext)
-
-		// 画像データをファイルに書き込む
-		err = os.WriteFile(path, p.Imgdata, 0666)
-		if err != nil {
-			log.Print(err)
-			return
-		}
 	}
 }
 
