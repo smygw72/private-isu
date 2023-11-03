@@ -445,6 +445,7 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			setStructToMemcache(mc, key, results)
+		}
 		posts, err = makePosts(results, getCSRFToken(r), false)
 		if err != nil {
 			log.Print(err)
