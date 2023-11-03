@@ -155,9 +155,9 @@ func validateUser(accountName, password string) bool {
 // 今回のGo実装では言語側のエスケープの仕組みが使えないのでOSコマンドインジェクション対策できない
 // 取り急ぎPHPのescapeshellarg関数を参考に自前で実装
 // cf: http://jp2.php.net/manual/ja/function.escapeshellarg.php
-func escapeshellarg(arg string) string {
-	return "'" + strings.Replace(arg, "'", "'\\''", -1) + "'"
-}
+// func escapeshellarg(arg string) string {
+// 	return "'" + strings.Replace(arg, "'", "'\\''", -1) + "'"
+// }
 
 func digest(src string) string {
 	// opensslのバージョンによっては (stdin)= というのがつくので取る
@@ -435,16 +435,11 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 	var posts []Post
 	err := getStructFromMemcache(mc, key, &posts)
 	if err != nil {
-		key := "post_all"
 		results := []Post{}
-		err = getStructFromMemcache(mc, key, &results)
+		err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
 		if err != nil {
-			err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
-			if err != nil {
-				log.Print(err)
-				return
-			}
-			setStructToMemcache(mc, key, results)
+			log.Print(err)
+			return
 		}
 		posts, err = makePosts(results, getCSRFToken(r), false)
 		if err != nil {
