@@ -155,9 +155,9 @@ func validateUser(accountName, password string) bool {
 // 今回のGo実装では言語側のエスケープの仕組みが使えないのでOSコマンドインジェクション対策できない
 // 取り急ぎPHPのescapeshellarg関数を参考に自前で実装
 // cf: http://jp2.php.net/manual/ja/function.escapeshellarg.php
-func escapeshellarg(arg string) string {
-	return "'" + strings.Replace(arg, "'", "'\\''", -1) + "'"
-}
+// func escapeshellarg(arg string) string {
+// 	return "'" + strings.Replace(arg, "'", "'\\''", -1) + "'"
+// }
 
 func digest(src string) string {
 	// opensslのバージョンによっては (stdin)= というのがつくので取る
@@ -435,11 +435,16 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 	var posts []Post
 	err := getStructFromMemcache(mc, key, &posts)
 	if err != nil {
+		key := "post"
 		results := []Post{}
-		err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
+		err := getStructFromMemcache(mc, key, &results)
 		if err != nil {
-			log.Print(err)
-			return
+			err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
+			if err != nil {
+				log.Print(err)
+				return
+			}
+			setStructToMemcache(mc, key, results)
 		}
 		posts, err = makePosts(results, getCSRFToken(r), false)
 		if err != nil {
@@ -570,12 +575,31 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := []Post{}
-	err = db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `created_at` <= ? ORDER BY `created_at` DESC", t.Format(ISO8601Format))
+	key := "post"
+	post_all := []Post{}
+	err = getStructFromMemcache(mc, key, &post_all)
 	if err != nil {
-		log.Print(err)
-		return
+		err := db.Select(&post_all, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
+		if err != nil {
+			log.Print(err)
+			return
+		}
+		setStructToMemcache(mc, key, post_all)
 	}
+
+	results := []Post{}
+	for _, p := range post_all {
+		if p.CreatedAt.Before(t) {
+			results = append(results, p)
+		}
+	}
+
+	// results := []Post{}
+	// err = db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `created_at` <= ? ORDER BY `created_at` DESC", t.Format(ISO8601Format))
+	// if err != nil {
+	// 	log.Print(err)
+	// 	return
+	// }
 
 	posts, err := makePosts(results, getCSRFToken(r), false)
 	if err != nil {
