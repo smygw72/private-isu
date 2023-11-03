@@ -435,12 +435,16 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 	var posts []Post
 	err := getStructFromMemcache(mc, key, &posts)
 	if err != nil {
+		key := "post_all"
 		results := []Post{}
-		err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
+		err = getStructFromMemcache(mc, key, &results)
 		if err != nil {
-			log.Print(err)
-			return
-		}
+			err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
+			if err != nil {
+				log.Print(err)
+				return
+			}
+			setStructToMemcache(mc, key, results)
 		posts, err = makePosts(results, getCSRFToken(r), false)
 		if err != nil {
 			log.Print(err)
