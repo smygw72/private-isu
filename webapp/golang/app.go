@@ -259,7 +259,7 @@ func makeIndexPosts(csrfToken string, allComments bool) ([]Post, error) {
 		comments.user_id AS comment_user_id,
 		comments.comment AS comment_comment,
 		comments.created_at AS comment_created_at,
-	  comment_users.account_name AS post_user_account_name,
+	  	comment_users.account_name AS post_user_account_name,
 		comment_users.passhash AS comment_user_passhash,
 		comment_users.authority AS post_user_authority,
 		comment_users.del_flg AS post_user_del_flg,
@@ -577,7 +577,7 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 	var posts []Post
 	err := getStructFromMemcache(mc, key, &posts)
 	if err != nil {
-		posts, err = makeIndexPosts(getCSRFToken(r), false)
+		posts, err = makePosts(getCSRFToken(r), false)
 		if err != nil {
 			log.Print(err)
 			return
