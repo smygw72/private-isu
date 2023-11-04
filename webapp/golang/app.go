@@ -218,6 +218,148 @@ func getFlash(w http.ResponseWriter, r *http.Request, key string) string {
 	}
 }
 
+func makeIndexPosts(csrfToken string, allComments bool) ([]Post, error) {
+
+	type PostCommentUser struct {
+		PostID                 int       `db:"post_id"`
+		PostUserID             int       `db:"post_user_id"`
+		PostBody               string    `db:"post_body"`
+		PostMime               string    `db:"post_mime"`
+		PostCreatedAt          time.Time `db:"post_created_at"`
+		PostUserAccountName    string    `db:"post_user_account_name"`
+		PostUserPasshash       string    `db:"post_user_passhash"`
+		PostUserAuthority      int       `db:"post_user_authority"`
+		PostUserDelFlg         int       `db:"post_user_del_flg"`
+		PostUserCreatedAt      time.Time `db:"post_user_created_at"`
+		CommentID              int       `db:"comment_id"`
+		CommentUserID          int       `db:"comment_user_id"`
+		CommentComment         string    `db:"comment_comment"`
+		CommentCreatedAt       time.Time `db:"comment_created_at"`
+		CommentUserAccountName string    `db:"comment_user_account_name"`
+		CommentUserPasshash    string    `db:"comment_user_passhash"`
+		CommentUserAuthority   int       `db:"comment_user_authority"`
+		CommentUserDelFlg      int       `db:"comment_user_del_flg"`
+		CommentUserCreatedAt   time.Time `db:"comment_user_created_at"`
+	}
+
+	results := []PostCommentUser{}
+	query := `
+	SELECT
+		posts.id AS post_id,
+		posts.user_id AS post_user_id,
+		posts.body AS post_body,
+		posts.mime AS post_mime,
+		posts.created_at AS post_created_at,
+		post_users.account_name AS post_user_account_name,
+		post_users.passhash AS post_user_passhash,
+		post_users.authority AS post_user_authority,
+		post_users.del_flg AS post_user_del_flg,
+		post_users.created_at AS post_user_created_at,
+		comments.id AS comment_id,
+		comments.user_id AS comment_user_id,
+		comments.comment AS comment_comment,
+		comments.created_at AS comment_created_at,
+	  comment_users.account_name AS post_user_account_name,
+		comment_users.passhash AS comment_user_passhash,
+		comment_users.authority AS post_user_authority,
+		comment_users.del_flg AS post_user_del_flg,
+		comment_users.created_at AS post_user_created_at
+	FROM posts
+	JOIN (
+		SELECT * FROM comments ORDER BY created_at DESC
+	) AS comments
+	ON posts.id = comments.post_id
+	JOIN users AS post_users
+	ON post_users.id = posts.user_id
+	JOIN users AS comment_users
+	ON comment_users.id  = comments.user_id
+	ORDER BY post_created_at DESC
+	`
+	err := db.Select(&results, query)
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	var posts []Post
+	current_post_id := -1
+	for _, r := range results {
+		if current_post_id != r.PostID {
+			if len(posts) >= postsPerPage {
+				break
+			}
+			if r.PostUserDelFlg == 1 {
+				continue
+			}
+			comments := []Comment{
+				{
+					ID:        r.CommentID,
+					PostID:    r.PostID,
+					UserID:    r.CommentUserID,
+					Comment:   r.CommentComment,
+					CreatedAt: r.CommentCreatedAt,
+					User: User{
+						ID:          r.CommentUserID,
+						AccountName: r.CommentUserAccountName,
+						Passhash:    r.CommentUserPasshash,
+						Authority:   r.CommentUserAuthority,
+						DelFlg:      r.CommentUserDelFlg,
+						CreatedAt:   r.CommentUserCreatedAt,
+					},
+				},
+			}
+			posts = append(posts, Post{
+				ID:           r.PostID,
+				UserID:       r.PostUserID,
+				Body:         r.PostBody,
+				Mime:         r.PostMime,
+				CreatedAt:    r.PostCreatedAt,
+				CommentCount: 1,
+				Comments:     comments,
+				User: User{
+					ID:          r.PostUserID,
+					AccountName: r.PostUserAccountName,
+					Passhash:    r.PostUserPasshash,
+					Authority:   r.PostUserAuthority,
+					DelFlg:      r.PostUserDelFlg,
+					CreatedAt:   r.PostUserCreatedAt,
+				},
+				CSRFToken: csrfToken,
+			})
+			current_post_id = r.PostID
+		} else {
+			if posts[len(posts)-1].CommentCount >= 3 && !allComments {
+				continue
+			}
+			posts[len(posts)-1].Comments = append(posts[len(posts)-1].Comments, Comment{
+				ID:        r.CommentID,
+				PostID:    r.PostID,
+				UserID:    r.CommentUserID,
+				Comment:   r.CommentComment,
+				CreatedAt: r.CommentCreatedAt,
+				User: User{
+					ID:          r.CommentUserID,
+					AccountName: r.CommentUserAccountName,
+					Passhash:    r.CommentUserPasshash,
+					Authority:   r.CommentUserAuthority,
+					DelFlg:      r.CommentUserDelFlg,
+					CreatedAt:   r.CommentUserCreatedAt,
+				},
+			})
+			posts[len(posts)-1].CommentCount++
+		}
+	}
+
+	for i := 0; i < len(posts); i++ {
+		// reverse
+		for j, k := 0, len(posts[i].Comments)-1; j < k; j, k = j+1, k-1 {
+			posts[i].Comments[j], posts[i].Comments[k] = posts[i].Comments[k], posts[i].Comments[j]
+		}
+	}
+
+	return posts, nil
+}
+
 func makePosts(results []Post, csrfToken string, allComments bool) ([]Post, error) {
 	var posts []Post
 
@@ -435,13 +577,7 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 	var posts []Post
 	err := getStructFromMemcache(mc, key, &posts)
 	if err != nil {
-		results := []Post{}
-		err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
-		if err != nil {
-			log.Print(err)
-			return
-		}
-		posts, err = makePosts(results, getCSRFToken(r), false)
+		posts, err = makeIndexPosts(getCSRFToken(r), false)
 		if err != nil {
 			log.Print(err)
 			return
