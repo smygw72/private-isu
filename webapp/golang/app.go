@@ -577,7 +577,7 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 	var posts []Post
 	err := getStructFromMemcache(mc, key, &posts)
 	if err != nil {
-		posts, err = makePosts(getCSRFToken(r), false)
+		posts, err = makePosts(posts, getCSRFToken(r), false)
 		if err != nil {
 			log.Print(err)
 			return
