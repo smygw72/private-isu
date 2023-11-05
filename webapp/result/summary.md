@@ -6,3 +6,4 @@
 |20231105-135046|158017|e6c5576377f889530dccf7f19db4dfc9cf239947|resolve N+1 in getPosts|
 |20231105-141513|155100|39a8162f4be35af5432d54d1b2de644555f44801|add CommentCount in fastMakePosts|
 |20231105-142114|155278|332f895efd12a2bf6be5f263d4fd85f359c61daa|resolve N+1 in getAccountName|
+|20231105-163511|159269|5c03de74158c7afa38e9a5662b7863d6df4aa6ba|Refactor SQL query to join users table and retrieve additional user information for comments.|
