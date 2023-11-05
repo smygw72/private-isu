@@ -72,16 +72,17 @@ type Comment struct {
 }
 
 type PostUser struct {
-	PostID          int       `db:"post_id"`
-	PostUserID      int       `db:"post_user_id"`
-	PostBody        string    `db:"post_body"`
-	PostMime        string    `db:"post_mime"`
-	PostCreatedAt   time.Time `db:"post_created_at"`
-	UserAccountName string    `db:"user_account_name"`
-	UserPasshash    string    `db:"user_passhash"`
-	UserAuthority   int       `db:"user_authority"`
-	UserDelFlg      int       `db:"user_del_flg"`
-	UserCreatedAt   time.Time `db:"user_created_at"`
+	PostID           int       `db:"post_id"`
+	PostUserID       int       `db:"post_user_id"`
+	PostBody         string    `db:"post_body"`
+	PostMime         string    `db:"post_mime"`
+	PostCreatedAt    time.Time `db:"post_created_at"`
+	PostCommentCount int       `db:"post_comment_count"`
+	UserAccountName  string    `db:"user_account_name"`
+	UserPasshash     string    `db:"user_passhash"`
+	UserAuthority    int       `db:"user_authority"`
+	UserDelFlg       int       `db:"user_del_flg"`
+	UserCreatedAt    time.Time `db:"user_created_at"`
 	// CommentID              int       `db:"comment_id"`
 	// CommentUserID          int       `db:"comment_user_id"`
 	// CommentComment         string    `db:"comment_comment"`
@@ -244,20 +245,17 @@ func fastMakePosts(results []PostUser, csrfToken string, allComments bool) ([]Po
 
 	var posts []Post
 	for _, r := range results {
-		post_user := User{
-			ID:          r.PostUserID,
-			AccountName: r.UserAccountName,
-			Passhash:    r.UserPasshash,
-			Authority:   r.UserAuthority,
-			DelFlg:      r.UserDelFlg,
-			CreatedAt:   r.UserCreatedAt,
+		err := db.Get(&r.PostCommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", r.PostID)
+		if err != nil {
+			return nil, err
 		}
+
 		var comments []Comment
 		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"
 		if !allComments {
 			query += " LIMIT 3"
 		}
-		err := db.Select(&comments, query, r.PostID)
+		err = db.Select(&comments, query, r.PostID)
 		if err != nil {
 			return nil, err
 		}
@@ -274,12 +272,21 @@ func fastMakePosts(results []PostUser, csrfToken string, allComments bool) ([]Po
 		}
 
 		posts = append(posts, Post{
-			ID:        r.PostID,
-			UserID:    r.PostUserID,
-			Body:      r.PostBody,
-			Mime:      r.PostMime,
-			CreatedAt: r.PostCreatedAt,
-			User:      post_user,
+			ID:           r.PostID,
+			UserID:       r.PostUserID,
+			Body:         r.PostBody,
+			Mime:         r.PostMime,
+			CreatedAt:    r.PostCreatedAt,
+			CommentCount: r.PostCommentCount,
+			Comments:     comments,
+			User: User{
+				ID:          r.PostUserID,
+				AccountName: r.UserAccountName,
+				Passhash:    r.UserPasshash,
+				Authority:   r.UserAuthority,
+				DelFlg:      r.UserDelFlg,
+				CreatedAt:   r.UserCreatedAt,
+			},
 			CSRFToken: csrfToken,
 		})
 	}
@@ -588,6 +595,38 @@ func getAccountName(w http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 		return
 	}
+
+	// results := []PostUser{}
+	// query := `
+	// SELECT
+	// 	posts.id AS post_id,
+	// 	posts.user_id AS post_user_id,
+	// 	posts.body AS post_body,
+	// 	posts.mime AS post_mime,
+	// 	posts.created_at AS post_created_at,
+	// 	users.account_name AS user_account_name,
+	// 	users.passhash AS user_passhash,
+	// 	users.authority AS user_authority,
+	// 	users.del_flg AS user_del_flg,
+	// 	users.created_at AS user_created_at
+	// FROM posts JOIN users
+	// ON users.id = posts.user_id
+	// WHERE users.del_flg = 0
+	// AND posts.user_id = ?
+	// ORDER BY posts.created_at DESC
+	// LIMIT 20
+	// `
+	// err = db.Select(&results, query, user.ID)
+	// if err != nil {
+	// 	log.Print(err)
+	// 	return
+	// }
+
+	// posts, err := fastMakePosts(results, getCSRFToken(r), false)
+	// if err != nil {
+	// 	log.Print(err)
+	// 	return
+	// }
 
 	commentCount := 0
 	err = db.Get(&commentCount, "SELECT COUNT(*) AS count FROM `comments` WHERE `user_id` = ?", user.ID)
