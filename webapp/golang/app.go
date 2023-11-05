@@ -879,6 +879,8 @@ func getImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	dumpImageFiles(int64(pid), post.Mime, post.Imgdata)
+
 	w.WriteHeader(http.StatusNotFound)
 }
 
