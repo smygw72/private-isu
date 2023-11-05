@@ -135,7 +135,7 @@ func setStructToMemcache(mc *memcache.Client, key string, value interface{}) err
 	item := &memcache.Item{
 		Key:        key,
 		Value:      buffer.Bytes(),
-		Expiration: 5,
+		Expiration: 10,
 	}
 	return mc.Set(item)
 }
