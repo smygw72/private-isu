@@ -10,3 +10,4 @@
 |20231105-164303|161502|5c03de74158c7afa38e9a5662b7863d6df4aa6ba|increase benchmark filedescripter|
 |20231105-172758|156626|e13d92897ecad6abb4810fab41adf089842e7959|cache posts in getAccountName|
 |20231105-173000|159809|e13d92897ecad6abb4810fab41adf089842e7959|test|
+|20231105-174245|163244|fe2a8abd21d95f044c81dbf609830e5506bfb73b|cache comment and its count in fastMakePosts|
