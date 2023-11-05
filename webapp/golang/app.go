@@ -218,7 +218,7 @@ func getFlash(w http.ResponseWriter, r *http.Request, key string) string {
 	}
 }
 
-func makeIndexPosts(csrfToken string, allComments bool) ([]Post, error) {
+func fastMakePosts(csrfToken string, allComments bool) ([]Post, error) {
 
 	type PostCommentUser struct {
 		PostID                 int       `db:"post_id"`
@@ -244,7 +244,7 @@ func makeIndexPosts(csrfToken string, allComments bool) ([]Post, error) {
 
 	results := []PostCommentUser{}
 	query := `
-	SELECT
+	SELECT 
 		posts.id AS post_id,
 		posts.user_id AS post_user_id,
 		posts.body AS post_body,
@@ -259,21 +259,26 @@ func makeIndexPosts(csrfToken string, allComments bool) ([]Post, error) {
 		comments.user_id AS comment_user_id,
 		comments.comment AS comment_comment,
 		comments.created_at AS comment_created_at,
-	  	comment_users.account_name AS post_user_account_name,
+	comment_users.account_name AS post_user_account_name,
 		comment_users.passhash AS comment_user_passhash,
 		comment_users.authority AS post_user_authority,
 		comment_users.del_flg AS post_user_del_flg,
 		comment_users.created_at AS post_user_created_at
-	FROM posts
-	JOIN (
-		SELECT * FROM comments ORDER BY created_at DESC
-	) AS comments
+	FROM posts JOIN comments
 	ON posts.id = comments.post_id
 	JOIN users AS post_users
 	ON post_users.id = posts.user_id
 	JOIN users AS comment_users
 	ON comment_users.id  = comments.user_id
+	WHERE EXISTS (
+		SELECT * FROM comments
+	WHERE comments.post_id = posts.id
+	ORDER BY comments.created_at DESC
+	LIMIT 3
+	)
+	AND post_users.del_flg = 0
 	ORDER BY post_created_at DESC
+	LIMIT 60
 	`
 	err := db.Select(&results, query)
 	if err != nil {
@@ -287,9 +292,6 @@ func makeIndexPosts(csrfToken string, allComments bool) ([]Post, error) {
 		if current_post_id != r.PostID {
 			if len(posts) >= postsPerPage {
 				break
-			}
-			if r.PostUserDelFlg == 1 {
-				continue
 			}
 			comments := []Comment{
 				{
@@ -328,9 +330,6 @@ func makeIndexPosts(csrfToken string, allComments bool) ([]Post, error) {
 			})
 			current_post_id = r.PostID
 		} else {
-			if posts[len(posts)-1].CommentCount >= 3 && !allComments {
-				continue
-			}
 			posts[len(posts)-1].Comments = append(posts[len(posts)-1].Comments, Comment{
 				ID:        r.CommentID,
 				PostID:    r.PostID,
@@ -583,7 +582,8 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 			log.Print(err)
 			return
 		}
-		posts, err = makePosts(results, getCSRFToken(r), false)
+		// posts, err = makePosts(results, getCSRFToken(r), false)
+		posts, err = fastMakePosts(getCSRFToken(r), false)
 		if err != nil {
 			log.Print(err)
 			return
