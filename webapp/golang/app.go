@@ -246,6 +246,9 @@ func fastMakePosts(results []PostUser, csrfToken string, allComments bool) ([]Po
 	var posts []Post
 	for _, r := range results {
 		key := "comment_" + strconv.Itoa(r.PostID)
+		if allComments {
+			key += "_all"
+		}
 		var comments []Comment
 		err := getStructFromMemcache(mc, key, &comments)
 		if err != nil {
