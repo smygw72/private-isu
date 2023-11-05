@@ -251,20 +251,29 @@ func fastMakePosts(results []PostUser, csrfToken string, allComments bool) ([]Po
 		}
 
 		var comments []Comment
-		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"
+		query := `
+		SELECT
+			comments.id AS comment_id,
+			comments.post_id AS comment_post_id,
+			comments.user_id AS comment_user_id,
+			comments.comment AS comment_comment,
+			comments.created_at AS comment_created_at,
+			users.account_name AS user_account_name,
+			users.passhash AS user_passhash,
+			users.authority AS user_authority,
+			users.del_flg AS user_del_flg,
+			users.created_at AS user_created_at
+		FROM comments JOIN users
+		ON users.id = comments.user_id
+		WHERE comments.post_id = ?
+		ORDER BY comments.created_at DESC
+		`
 		if !allComments {
 			query += " LIMIT 3"
 		}
 		err = db.Select(&comments, query, r.PostID)
 		if err != nil {
 			return nil, err
-		}
-
-		for i := 0; i < len(comments); i++ {
-			err := db.Get(&comments[i].User, "SELECT * FROM `users` WHERE `id` = ?", comments[i].UserID)
-			if err != nil {
-				return nil, err
-			}
 		}
 
 		for i, j := 0, len(comments)-1; i < j; i, j = i+1, j-1 {
