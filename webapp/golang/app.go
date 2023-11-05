@@ -560,7 +560,8 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 			users.authority AS user_authority,
 			users.del_flg AS user_del_flg,
 			users.created_at AS user_created_at
-		FROM posts JOIN users
+		FROM posts FORCE INDEX (created_at_index)
+		JOIN users
 		ON users.id = posts.user_id
 		WHERE users.del_flg = 0
 		ORDER BY posts.created_at DESC
@@ -638,7 +639,8 @@ func getAccountName(w http.ResponseWriter, r *http.Request) {
 		users.authority AS user_authority,
 		users.del_flg AS user_del_flg,
 		users.created_at AS user_created_at
-	FROM posts JOIN users
+	FROM posts FORCE INDEX (created_at_index)
+	JOIN users
 	ON users.id = posts.user_id
 	WHERE users.del_flg = 0
 	AND posts.user_id = ?
