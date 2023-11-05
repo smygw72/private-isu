@@ -567,8 +567,8 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 			log.Print(err)
 			return
 		}
-		// posts, err = makePosts(results, getCSRFToken(r), false)
-		posts, err = fastMakePosts(getCSRFToken(r), false)
+		posts, err = makePosts(results, getCSRFToken(r), false)
+		// posts, err = fastMakePosts(getCSRFToken(r), false)
 		if err != nil {
 			log.Print(err)
 			return
