@@ -245,31 +245,56 @@ func fastMakePosts(results []PostUser, csrfToken string, allComments bool) ([]Po
 
 	var posts []Post
 	for _, r := range results {
-		err := db.Get(&r.PostCommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", r.PostID)
-		if err != nil {
-			return nil, err
-		}
-
+		key := "comment_" + strconv.Itoa(r.PostID)
 		var comments []Comment
-		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"
-		if !allComments {
-			query += " LIMIT 3"
-		}
-		err = db.Select(&comments, query, r.PostID)
+		err := getStructFromMemcache(mc, key, &comments)
 		if err != nil {
-			return nil, err
-		}
-
-		for i := 0; i < len(comments); i++ {
-			err := db.Get(&comments[i].User, "SELECT * FROM `users` WHERE `id` = ?", comments[i].UserID)
+			query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"
+			if !allComments {
+				query += " LIMIT 3"
+			}
+			err = db.Select(&comments, query, r.PostID)
 			if err != nil {
 				return nil, err
 			}
+			for i := 0; i < len(comments); i++ {
+				err := db.Get(&comments[i].User, "SELECT * FROM `users` WHERE `id` = ?", comments[i].UserID)
+				if err != nil {
+					return nil, err
+				}
+			}
+			for i, j := 0, len(comments)-1; i < j; i, j = i+1, j-1 {
+				comments[i], comments[j] = comments[j], comments[i]
+			}
+			setStructToMemcache(mc, key, comments)
 		}
 
-		for i, j := 0, len(comments)-1; i < j; i, j = i+1, j-1 {
-			comments[i], comments[j] = comments[j], comments[i]
+		key = "comment_count_" + strconv.Itoa(r.PostID)
+		var commentCount int
+		err = getStructFromMemcache(mc, key, &commentCount)
+		if err != nil {
+			err := db.Get(&commentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", r.PostID)
+			if err != nil {
+				return nil, err
+			}
+			setStructToMemcache(mc, key, commentCount)
 		}
+		r.PostCommentCount = commentCount
+
+		// err := db.Get(&r.PostCommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", r.PostID)
+		// if err != nil {
+		// 	return nil, err
+		// }
+
+		// var comments []Comment
+		// query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"
+		// if !allComments {
+		// 	query += " LIMIT 3"
+		// }
+		// err = db.Select(&comments, query, r.PostID)
+		// if err != nil {
+		// 	return nil, err
+		// }
 
 		posts = append(posts, Post{
 			ID:           r.PostID,
