@@ -71,6 +71,28 @@ type Comment struct {
 	User      User
 }
 
+type PostUser struct {
+	PostID          int       `db:"post_id"`
+	PostUserID      int       `db:"post_user_id"`
+	PostBody        string    `db:"post_body"`
+	PostMime        string    `db:"post_mime"`
+	PostCreatedAt   time.Time `db:"post_created_at"`
+	UserAccountName string    `db:"user_account_name"`
+	UserPasshash    string    `db:"user_passhash"`
+	UserAuthority   int       `db:"user_authority"`
+	UserDelFlg      int       `db:"user_del_flg"`
+	UserCreatedAt   time.Time `db:"user_created_at"`
+	// CommentID              int       `db:"comment_id"`
+	// CommentUserID          int       `db:"comment_user_id"`
+	// CommentComment         string    `db:"comment_comment"`
+	// CommentCreatedAt       time.Time `db:"comment_created_at"`
+	// CommentUserAccountName string    `db:"comment_user_account_name"`
+	// CommentUserPasshash    string    `db:"comment_user_passhash"`
+	// CommentUserAuthority   int       `db:"comment_user_authority"`
+	// CommentUserDelFlg      int       `db:"comment_user_del_flg"`
+	// CommentUserCreatedAt   time.Time `db:"comment_user_created_at"`
+}
+
 func init() {
 	memdAddr := os.Getenv("ISUCONP_MEMCACHED_ADDRESS")
 	if memdAddr == "" {
@@ -218,54 +240,7 @@ func getFlash(w http.ResponseWriter, r *http.Request, key string) string {
 	}
 }
 
-func fastMakePosts(csrfToken string, allComments bool) ([]Post, error) {
-
-	type PostUser struct {
-		PostID          int       `db:"post_id"`
-		PostUserID      int       `db:"post_user_id"`
-		PostBody        string    `db:"post_body"`
-		PostMime        string    `db:"post_mime"`
-		PostCreatedAt   time.Time `db:"post_created_at"`
-		UserAccountName string    `db:"user_account_name"`
-		UserPasshash    string    `db:"user_passhash"`
-		UserAuthority   int       `db:"user_authority"`
-		UserDelFlg      int       `db:"user_del_flg"`
-		UserCreatedAt   time.Time `db:"user_created_at"`
-		// CommentID              int       `db:"comment_id"`
-		// CommentUserID          int       `db:"comment_user_id"`
-		// CommentComment         string    `db:"comment_comment"`
-		// CommentCreatedAt       time.Time `db:"comment_created_at"`
-		// CommentUserAccountName string    `db:"comment_user_account_name"`
-		// CommentUserPasshash    string    `db:"comment_user_passhash"`
-		// CommentUserAuthority   int       `db:"comment_user_authority"`
-		// CommentUserDelFlg      int       `db:"comment_user_del_flg"`
-		// CommentUserCreatedAt   time.Time `db:"comment_user_created_at"`
-	}
-
-	results := []PostUser{}
-	query := `
-	SELECT
-		posts.id AS post_id,
-		posts.user_id AS post_user_id,
-		posts.body AS post_body,
-		posts.mime AS post_mime,
-		posts.created_at AS post_created_at,
-		users.account_name AS user_account_name,
-		users.passhash AS user_passhash,
-		users.authority AS user_authority,
-		users.del_flg AS user_del_flg,
-		users.created_at AS user_created_at
-	FROM posts JOIN users
-	ON users.id = posts.user_id
-	WHERE users.del_flg = 0
-	ORDER BY posts.created_at DESC
-	LIMIT 20
-	`
-	err := db.Select(&results, query)
-	if err != nil {
-		log.Print(err)
-		return nil, err
-	}
+func fastMakePosts(results []PostUser, csrfToken string, allComments bool) ([]Post, error) {
 
 	var posts []Post
 	for _, r := range results {
@@ -282,7 +257,7 @@ func fastMakePosts(csrfToken string, allComments bool) ([]Post, error) {
 		if !allComments {
 			query += " LIMIT 3"
 		}
-		err = db.Select(&comments, query, r.PostID)
+		err := db.Select(&comments, query, r.PostID)
 		if err != nil {
 			return nil, err
 		}
@@ -536,7 +511,31 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 		// 	return
 		// }
 		// posts, err = makePosts(results, getCSRFToken(r), false)
-		posts, err = fastMakePosts(getCSRFToken(r), false)
+		results := []PostUser{}
+		query := `
+		SELECT
+			posts.id AS post_id,
+			posts.user_id AS post_user_id,
+			posts.body AS post_body,
+			posts.mime AS post_mime,
+			posts.created_at AS post_created_at,
+			users.account_name AS user_account_name,
+			users.passhash AS user_passhash,
+			users.authority AS user_authority,
+			users.del_flg AS user_del_flg,
+			users.created_at AS user_created_at
+		FROM posts JOIN users
+		ON users.id = posts.user_id
+		WHERE users.del_flg = 0
+		ORDER BY posts.created_at DESC
+		LIMIT 20
+		`
+		err := db.Select(&results, query)
+		if err != nil {
+			log.Print(err)
+			return
+		}
+		posts, err = fastMakePosts(results, getCSRFToken(r), false)
 		if err != nil {
 			log.Print(err)
 			return
@@ -665,14 +664,45 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := []Post{}
-	err = db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `created_at` <= ? ORDER BY `created_at` DESC", t.Format(ISO8601Format))
+	// results := []Post{}
+	// err = db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `created_at` <= ? ORDER BY `created_at` DESC", t.Format(ISO8601Format))
+	// if err != nil {
+	// 	log.Print(err)
+	// 	return
+	// }
+
+	// posts, err := makePosts(results, getCSRFToken(r), false)
+	// if err != nil {
+	// 	log.Print(err)
+	// 	return
+	// }
+
+	results := []PostUser{}
+	query := `
+	SELECT
+		posts.id AS post_id,
+		posts.user_id AS post_user_id,
+		posts.body AS post_body,
+		posts.mime AS post_mime,
+		posts.created_at AS post_created_at,
+		users.account_name AS user_account_name,
+		users.passhash AS user_passhash,
+		users.authority AS user_authority,
+		users.del_flg AS user_del_flg,
+		users.created_at AS user_created_at
+	FROM posts JOIN users
+	ON users.id = posts.user_id
+	WHERE users.del_flg = 0
+	AND posts.created_at <= ?
+	ORDER BY posts.created_at DESC
+	LIMIT 20
+	`
+	err = db.Select(&results, query, t.Format(ISO8601Format))
 	if err != nil {
 		log.Print(err)
 		return
 	}
-
-	posts, err := makePosts(results, getCSRFToken(r), false)
+	posts, err := fastMakePosts(results, getCSRFToken(r), false)
 	if err != nil {
 		log.Print(err)
 		return
