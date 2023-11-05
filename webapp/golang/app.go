@@ -262,52 +262,25 @@ func fastMakePosts(results []PostUser, csrfToken string, allComments bool) ([]Po
 			return nil, err
 		}
 
-		var comment_users []CommentUser
-		query := `
-		SELECT
-			comments.id AS comment_id,
-			comments.post_id AS comment_post_id,
-			comments.user_id AS comment_user_id,
-			comments.comment AS comment_comment,
-			comments.created_at AS comment_created_at,
-			users.account_name AS user_account_name,
-			users.passhash AS user_passhash,
-			users.authority AS user_authority,
-			users.del_flg AS user_del_flg,
-			users.created_at AS user_created_at
-		FROM comments JOIN users
-		ON users.id = comments.user_id
-		WHERE comments.post_id = ?
-		ORDER BY comments.created_at DESC
-		`
+		var comments []Comment
+		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"
 		if !allComments {
 			query += " LIMIT 3"
 		}
-		err = db.Select(&comment_users, query, r.PostID)
+		err = db.Select(&comments, query, r.PostID)
 		if err != nil {
 			return nil, err
 		}
 
-		for i, j := 0, len(comment_users)-1; i < j; i, j = i+1, j-1 {
-			comment_users[i], comment_users[j] = comment_users[j], comment_users[i]
+		for i := 0; i < len(comments); i++ {
+			err := db.Get(&comments[i].User, "SELECT * FROM `users` WHERE `id` = ?", comments[i].UserID)
+			if err != nil {
+				return nil, err
+			}
 		}
-		comments := []Comment{}
-		for _, c := range comment_users {
-			comments = append(comments, Comment{
-				ID:        c.CommentID,
-				PostID:    r.PostID,
-				UserID:    c.CommentUserID,
-				Comment:   c.CommentComment,
-				CreatedAt: c.CommentCreatedAt,
-				User: User{
-					ID:          c.CommentUserID,
-					AccountName: c.UserAccountName,
-					Passhash:    c.UserPasshash,
-					Authority:   c.UserAuthority,
-					DelFlg:      c.UserDelFlg,
-					CreatedAt:   c.UserCreatedAt,
-				},
-			})
+
+		for i, j := 0, len(comments)-1; i < j; i, j = i+1, j-1 {
+			comments[i], comments[j] = comments[j], comments[i]
 		}
 
 		posts = append(posts, Post{
