@@ -596,42 +596,36 @@ func getAccountName(w http.ResponseWriter, r *http.Request) {
 	// 	return
 	// }
 
-	key := "accountName_" + accountName
-	var posts []Post
-	err = getStructFromMemcache(mc, key, &posts)
+	results := []PostUser{}
+	query := `
+	SELECT
+		posts.id AS post_id,
+		posts.user_id AS post_user_id,
+		posts.body AS post_body,
+		posts.mime AS post_mime,
+		posts.created_at AS post_created_at,
+		users.account_name AS user_account_name,
+		users.passhash AS user_passhash,
+		users.authority AS user_authority,
+		users.del_flg AS user_del_flg,
+		users.created_at AS user_created_at
+	FROM posts JOIN users
+	ON users.id = posts.user_id
+	WHERE users.del_flg = 0
+	AND posts.user_id = ?
+	ORDER BY posts.created_at DESC
+	LIMIT 20
+	`
+	err = db.Select(&results, query, user.ID)
 	if err != nil {
-		results := []PostUser{}
-		query := `
-		SELECT
-			posts.id AS post_id,
-			posts.user_id AS post_user_id,
-			posts.body AS post_body,
-			posts.mime AS post_mime,
-			posts.created_at AS post_created_at,
-			users.account_name AS user_account_name,
-			users.passhash AS user_passhash,
-			users.authority AS user_authority,
-			users.del_flg AS user_del_flg,
-			users.created_at AS user_created_at
-		FROM posts JOIN users
-		ON users.id = posts.user_id
-		WHERE users.del_flg = 0
-		AND posts.user_id = ?
-		ORDER BY posts.created_at DESC
-		LIMIT 20
-		`
-		err = db.Select(&results, query, user.ID)
-		if err != nil {
-			log.Print(err)
-			return
-		}
+		log.Print(err)
+		return
+	}
 
-		posts, err := fastMakePosts(results, getCSRFToken(r), false)
-		if err != nil {
-			log.Print(err)
-			return
-		}
-		setStructToMemcache(mc, key, posts)
+	posts, err := fastMakePosts(results, getCSRFToken(r), false)
+	if err != nil {
+		log.Print(err)
+		return
 	}
 
 	commentCount := 0
