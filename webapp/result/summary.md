@@ -19,3 +19,4 @@
 |20231105-184752|158892|e0db579e7323af150c726ae9ea0aef8c1f72ddde|fix FORCE INDEX in each SQL query|
 |20231105-190032|158563|e0db579e7323af150c726ae9ea0aef8c1f72ddde|fix FORCE INDEX in each SQL query|
 |20231105-193727|162921|7f37f0bfcbfe48d4e877440f63a06db30b81917c|update mysql i/o performance|
+|20231105-194751|160633|57c8347bcfbb043e57b0612c4b4b39feb0418c85|update isucon.conf|
