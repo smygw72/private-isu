@@ -94,6 +94,18 @@ type PostUser struct {
 	// CommentUserCreatedAt   time.Time `db:"comment_user_created_at"`
 }
 
+type CommentUser struct {
+	CommentID        int       `db:"comment_id"`
+	CommentUserID    int       `db:"comment_user_id"`
+	CommentComment   string    `db:"comment_comment"`
+	CommentCreatedAt time.Time `db:"comment_created_at"`
+	UserAccountName  string    `db:"user_account_name"`
+	UserPasshash     string    `db:"user_passhash"`
+	UserAuthority    int       `db:"user_authority"`
+	UserDelFlg       int       `db:"user_del_flg"`
+	UserCreatedAt    time.Time `db:"user_created_at"`
+}
+
 func init() {
 	memdAddr := os.Getenv("ISUCONP_MEMCACHED_ADDRESS")
 	if memdAddr == "" {
@@ -250,7 +262,7 @@ func fastMakePosts(results []PostUser, csrfToken string, allComments bool) ([]Po
 			return nil, err
 		}
 
-		var comments []Comment
+		var comment_users []CommentUser
 		query := `
 		SELECT
 			comments.id AS comment_id,
@@ -271,13 +283,31 @@ func fastMakePosts(results []PostUser, csrfToken string, allComments bool) ([]Po
 		if !allComments {
 			query += " LIMIT 3"
 		}
-		err = db.Select(&comments, query, r.PostID)
+		err = db.Select(&comment_users, query, r.PostID)
 		if err != nil {
 			return nil, err
 		}
 
-		for i, j := 0, len(comments)-1; i < j; i, j = i+1, j-1 {
-			comments[i], comments[j] = comments[j], comments[i]
+		for i, j := 0, len(comment_users)-1; i < j; i, j = i+1, j-1 {
+			comment_users[i], comment_users[j] = comment_users[j], comment_users[i]
+		}
+		comments := []Comment{}
+		for _, c := range comment_users {
+			comments = append(comments, Comment{
+				ID:        c.CommentID,
+				PostID:    r.PostID,
+				UserID:    c.CommentUserID,
+				Comment:   c.CommentComment,
+				CreatedAt: c.CommentCreatedAt,
+				User: User{
+					ID:          c.CommentUserID,
+					AccountName: c.UserAccountName,
+					Passhash:    c.UserPasshash,
+					Authority:   c.UserAuthority,
+					DelFlg:      c.UserDelFlg,
+					CreatedAt:   c.UserCreatedAt,
+				},
+			})
 		}
 
 		posts = append(posts, Post{
