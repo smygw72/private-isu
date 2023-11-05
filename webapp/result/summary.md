@@ -13,3 +13,4 @@
 |20231105-174245|163244|fe2a8abd21d95f044c81dbf609830e5506bfb73b|cache comment and its count in fastMakePosts|
 |20231105-175110|159915|dab575607bcfa4197441dc855e187b70ac2776f1|support cache for allcomments|
 |20231105-180914|136294|3386fe2db6075430bb4295d1b0123223a9d3b80c|add user_id_created_at_index in posts table|
+|20231105-182030|152308|7a3b1154155c65c370b54fc2e683318d83213861|add FORCE INDEX in each SQL query|
