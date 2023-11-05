@@ -94,18 +94,6 @@ type PostUser struct {
 	// CommentUserCreatedAt   time.Time `db:"comment_user_created_at"`
 }
 
-type CommentUser struct {
-	CommentID        int       `db:"comment_id"`
-	CommentUserID    int       `db:"comment_user_id"`
-	CommentComment   string    `db:"comment_comment"`
-	CommentCreatedAt time.Time `db:"comment_created_at"`
-	UserAccountName  string    `db:"user_account_name"`
-	UserPasshash     string    `db:"user_passhash"`
-	UserAuthority    int       `db:"user_authority"`
-	UserDelFlg       int       `db:"user_del_flg"`
-	UserCreatedAt    time.Time `db:"user_created_at"`
-}
-
 func init() {
 	memdAddr := os.Getenv("ISUCONP_MEMCACHED_ADDRESS")
 	if memdAddr == "" {
